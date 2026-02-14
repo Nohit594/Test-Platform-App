@@ -19,9 +19,9 @@ export default function Home() {
       <nav className="relative z-10 w-full max-w-7xl mx-auto p-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 bg-gradient-to-br from-cyan-400 to-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">T</span>
+            <span className="text-white font-bold text-sm">TP</span>
           </div>
-          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">TestPlatform</span>
+          <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">Test Platform</span>
         </div>
       </nav>
 
