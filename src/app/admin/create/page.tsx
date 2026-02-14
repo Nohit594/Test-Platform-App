@@ -300,6 +300,12 @@ IMAGE INSERTION RULE
 
 • Do NOT embed images for questions not listed.
 
+• **IMAGE OPTIONS**:
+  If the options themselves are images (e.g., Figures A, B, C, D),
+  do NOT describe them. Instead, output the text options exactly as:
+  "(1) Option A", "(2) Option B", "(3) Option C", "(4) Option D".
+  Do NOT attempt to describe the visual content of the options.
+
 ====================
 LATEX & MATH FORMATTING (CRITICAL)
 ====================
