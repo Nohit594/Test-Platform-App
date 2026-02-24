@@ -205,6 +205,22 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
     const currentQuestion = test.questions[currentQuestionIndex];
     const currentOptions = JSON.parse(currentQuestion.options) as string[];
 
+    const stats = { answered: 0, notAnswered: 0, notVisited: 0, marked: 0, markedAnswered: 0 };
+    if (test) {
+        test.questions.forEach(q => {
+            const isAnswered = answers[q.id] !== undefined;
+            const isMarked = markedForReview.has(q.id);
+            const isVisited = visited.has(q.id);
+
+            if (isAnswered) stats.answered++;
+            if (isVisited && !isAnswered) stats.notAnswered++;
+            if (!isVisited) stats.notVisited++;
+
+            if (isMarked && !isAnswered) stats.marked++;
+            if (isMarked && isAnswered) stats.markedAnswered++;
+        });
+    }
+
     return (
         <div className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
             {/* Header */}
@@ -241,7 +257,12 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
                 {/* Main Question Area */}
                 <main className="flex-1 flex flex-col overflow-hidden relative">
                     {/* Question Content */}
-                    <div className="flex-1 overflow-y-auto p-6 md:p-10 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                    <div
+                        className="flex-1 overflow-y-auto p-6 md:p-10 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent select-none"
+                        onCopy={(e) => e.preventDefault()}
+                        onPaste={(e) => e.preventDefault()}
+                        onCut={(e) => e.preventDefault()}
+                    >
                         <div className="max-w-4xl mx-auto space-y-8">
                             <div className="flex gap-4">
                                 <span className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-slate-800 border border-slate-700 text-cyan-400 font-bold">
@@ -346,24 +367,24 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
                     {/* Stats Legend */}
                     <div className="p-4 grid grid-cols-2 gap-3 text-xs border-b border-slate-800 bg-slate-900">
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center text-white">1</div>
+                            <div className="w-6 h-6 rounded bg-green-500 flex items-center justify-center text-white font-medium">{stats.answered}</div>
                             <span className="text-slate-400">Answered</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-red-500/20 border border-red-500 text-red-500 flex items-center justify-center">2</div>
+                            <div className="w-6 h-6 rounded bg-red-500/20 border border-red-500 text-red-500 flex items-center justify-center font-medium">{stats.notAnswered}</div>
                             <span className="text-slate-400">Not Answered</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-slate-800 border border-slate-600 text-slate-400 flex items-center justify-center">3</div>
+                            <div className="w-6 h-6 rounded bg-slate-800 border border-slate-600 text-slate-400 flex items-center justify-center font-medium">{stats.notVisited}</div>
                             <span className="text-slate-400">Not Visited</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center text-white">4</div>
+                            <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center text-white font-medium">{stats.marked}</div>
                             <span className="text-slate-400">Marked for Review</span>
                         </div>
                         <div className="flex items-center gap-2 col-span-2">
-                            <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center text-white relative">
-                                5
+                            <div className="w-6 h-6 rounded bg-purple-500 flex items-center justify-center text-white relative font-medium">
+                                {stats.markedAnswered}
                                 <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
                             </div>
                             <span className="text-slate-400">Ans & Marked for Review</span>
