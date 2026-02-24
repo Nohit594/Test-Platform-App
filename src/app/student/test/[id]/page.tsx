@@ -410,7 +410,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
                                             status === 'marked_answered' && "bg-purple-500 text-white hover:bg-purple-600"
                                         )}
                                     >
-                                        {idx + 1}
+                                        {q.number}
                                         {status === 'marked_answered' && (
                                             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-slate-900"></div>
                                         )}
