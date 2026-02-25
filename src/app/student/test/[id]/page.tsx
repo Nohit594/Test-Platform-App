@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Clock, CheckCircle, AlertCircle, HelpCircle, Bookmark, Menu } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Clock, CheckCircle, AlertCircle, HelpCircle, Bookmark, Menu, X } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import LatexRenderer from '@/components/LatexRenderer';
@@ -43,6 +43,8 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
     // Timer State
     const [timeLeft, setTimeLeft] = useState(0);
     const [isPaletteOpen, setIsPaletteOpen] = useState(false); // Mobile drawer
+    const [hasStarted, setHasStarted] = useState(false);
+    const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
     // Load Test
     useEffect(() => {
@@ -59,11 +61,39 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
             })
             .then(data => {
                 setTest(data);
-                if (data.duration) setTimeLeft(data.duration * 60);
-                // Mark first question as visited
-                if (data.questions.length > 0) {
-                    setVisited(new Set([data.questions[0].id]));
+
+                const savedProgressJSON = localStorage.getItem(`testProgress_${studentName}_${testId}`);
+                if (savedProgressJSON) {
+                    try {
+                        setHasStarted(true); // Skip start screen on resume
+                        const savedProgress = JSON.parse(savedProgressJSON);
+                        if (savedProgress.answers) setAnswers(savedProgress.answers);
+                        if (savedProgress.markedForReview) setMarkedForReview(new Set(savedProgress.markedForReview));
+                        if (savedProgress.visited) setVisited(new Set(savedProgress.visited));
+
+                        if (savedProgress.timeLeft !== undefined && savedProgress.timeLeft > 0) {
+                            setTimeLeft(savedProgress.timeLeft);
+                        } else if (data.duration) {
+                            setTimeLeft(data.duration * 60);
+                        }
+
+                        if (savedProgress.currentQuestionIndex !== undefined) {
+                            setCurrentQuestionIndex(savedProgress.currentQuestionIndex);
+                        }
+                    } catch (e) {
+                        if (data.duration) setTimeLeft(data.duration * 60);
+                        if (data.questions.length > 0) {
+                            setVisited(new Set([data.questions[0].id]));
+                        }
+                    }
+                } else {
+                    if (data.duration) setTimeLeft(data.duration * 60);
+                    // Mark first question as visited
+                    if (data.questions.length > 0) {
+                        setVisited(new Set([data.questions[0].id]));
+                    }
                 }
+
                 setLoading(false);
             })
             .catch((err) => {
@@ -74,7 +104,7 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
     // Timer Logic
     useEffect(() => {
-        if (!test || timeLeft <= 0) return;
+        if (!test || !hasStarted || timeLeft <= 0) return;
 
         const timer = setInterval(() => {
             setTimeLeft((prev) => {
@@ -88,7 +118,62 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [test, timeLeft]); // submit dependency handled via ref or simple function
+    }, [test, hasStarted, timeLeft]); // submit dependency handled via ref or simple function
+
+    // Tab Switching Penalty Logic
+    useEffect(() => {
+        if (!hasStarted || submitting) return;
+
+        const handleVisibilityChange = async () => {
+            if (document.hidden) {
+                alert("Warning: You switched tabs! 2 minutes have been deducted from your time.");
+                setTimeLeft(prev => Math.max(0, prev - 120));
+            } else {
+                // User came back to the tab, request fullscreen again
+                try {
+                    if (document.documentElement.requestFullscreen && !document.fullscreenElement) {
+                        await document.documentElement.requestFullscreen();
+                    }
+                } catch (e) {
+                    console.log("Auto-Fullscreen request failed when returning to tab", e);
+                }
+            }
+        };
+
+        const handlePopState = (e: PopStateEvent) => {
+            // Prevent actual navigation by pushing state back
+            window.history.pushState(null, '', window.location.href);
+
+            if (confirm("Are you sure you want to submit your test?")) {
+                handleSubmit(false);
+            }
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.history.pushState(null, '', window.location.href); // initial state for popstate
+        window.addEventListener('popstate', handlePopState);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener('popstate', handlePopState);
+        };
+    }, [hasStarted, submitting]);
+
+    // Save Progress Logic
+    useEffect(() => {
+        if (!test || loading || !hasStarted) return;
+        const studentName = localStorage.getItem('studentName');
+        if (!studentName) return;
+
+        const progress = {
+            answers,
+            markedForReview: Array.from(markedForReview),
+            visited: Array.from(visited),
+            timeLeft,
+            currentQuestionIndex
+        };
+        localStorage.setItem(`testProgress_${studentName}_${testId}`, JSON.stringify(progress));
+    }, [answers, markedForReview, visited, timeLeft, currentQuestionIndex, test, loading, testId]);
 
     const formatTime = (seconds: number) => {
         const h = Math.floor(seconds / 3600);
@@ -187,8 +272,11 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
             const data = await res.json();
             if (res.ok) {
+                if (studentName) {
+                    localStorage.removeItem(`testProgress_${studentName}_${testId}`);
+                }
                 if (!auto) alert('Test Submitted Successfully!');
-                router.push('/student');
+                window.location.href = '/student'; // Force harder redirect over router.push for popstate
             } else {
                 alert(data.error || 'Submission failed');
             }
@@ -201,6 +289,39 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
 
     if (loading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400">Loading Test...</div>;
     if (!test) return <div className="min-h-screen bg-slate-950 flex items-center justify-center text-red-500">Test not found</div>;
+
+    if (!hasStarted) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white p-6">
+                <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-xl p-8 text-center space-y-6 shadow-xl">
+                    <h2 className="text-2xl font-bold text-cyan-400">{test.title}</h2>
+                    <div className="bg-slate-800 p-5 rounded-lg border border-slate-700">
+                        <ul className="text-gray-100 space-y-3 text-base text-left list-disc list-inside font-medium tracking-wide">
+                            <li>The test will open in <strong className="text-cyan-300">Full Screen</strong> mode.</li>
+                            <li><strong className="text-red-400">Do not switch tabs</strong> or minimize the window.</li>
+                            <li>Switching tabs will result in a <strong className="text-red-400">2-minute penalty</strong>.</li>
+                            <li>You can <strong className="text-cyan-300">click on any image</strong> to expand it for better visibility.</li>
+                        </ul>
+                    </div>
+                    <button
+                        onClick={async () => {
+                            try {
+                                if (document.documentElement.requestFullscreen) {
+                                    await document.documentElement.requestFullscreen();
+                                }
+                            } catch (e) {
+                                console.log("Fullscreen request failed", e);
+                            }
+                            setHasStarted(true);
+                        }}
+                        className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-lg shadow-lg shadow-cyan-500/20 transition-all text-lg"
+                    >
+                        Start Test
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const currentQuestion = test.questions[currentQuestionIndex];
     const currentOptions = JSON.parse(currentQuestion.options) as string[];
@@ -222,7 +343,15 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
     }
 
     return (
-        <div className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans">
+        <div
+            className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden font-sans"
+            onClick={() => {
+                // Ensure fullscreen if they resumed and clicked anywhere
+                if (hasStarted && document.documentElement.requestFullscreen && !document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(() => { });
+                }
+            }}
+        >
             {/* Header */}
             <header className="h-16 bg-slate-900 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-20">
                 <div className="flex items-center gap-4">
@@ -262,6 +391,12 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
                         onCopy={(e) => e.preventDefault()}
                         onPaste={(e) => e.preventDefault()}
                         onCut={(e) => e.preventDefault()}
+                        onClick={(e) => {
+                            const target = e.target as HTMLElement;
+                            if (target.tagName === 'IMG') {
+                                setExpandedImage((target as HTMLImageElement).src);
+                            }
+                        }}
                     >
                         <div className="max-w-4xl mx-auto space-y-8">
                             <div className="flex gap-4">
@@ -432,6 +567,29 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
                     </div>
                 </aside>
             </div>
+
+            {/* Expanded Image Modal */}
+            {expandedImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-6 cursor-pointer"
+                    onClick={() => setExpandedImage(null)}
+                >
+                    <img
+                        src={expandedImage}
+                        alt="Expanded"
+                        className="w-full md:w-[90vw] h-auto max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                    />
+                    <button
+                        className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 rounded-full p-2 transition-colors"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedImage(null);
+                        }}
+                    >
+                        <X size={24} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
