@@ -23,6 +23,7 @@ export default function StudentDashboard() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [tests, setTests] = useState<Test[]>([]);
     const [loading, setLoading] = useState(false);
+    const [inProgressTests, setInProgressTests] = useState<Set<string>>(new Set());
     const router = useRouter();
 
     useEffect(() => {
@@ -56,6 +57,24 @@ export default function StudentDashboard() {
         };
         checkAuth();
     }, [router]);
+
+    useEffect(() => {
+        const studentName = localStorage.getItem('studentName');
+        if (!studentName) return;
+
+        // Check local storage for any in-progress tests
+        const inProgress = new Set<string>();
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(`testProgress_${studentName}_`)) {
+                const testId = key.split('_')[2];
+                if (testId) {
+                    inProgress.add(testId);
+                }
+            }
+        }
+        setInProgressTests(inProgress);
+    }, [tests]); // Re-run when tests load
 
 
     const fetchDashboard = async (username: string) => {
@@ -140,9 +159,12 @@ export default function StudentDashboard() {
                                     ) : (
                                         <Link
                                             href={`/student/test/${test.id}`}
-                                            className="inline-block px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg shadow-lg shadow-cyan-500/20 transition-all"
+                                            className={`inline-block px-8 py-3 font-bold rounded-lg shadow-lg transition-all text-white ${inProgressTests.has(test.id)
+                                                ? 'bg-yellow-600 hover:bg-yellow-500 shadow-yellow-500/20'
+                                                : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/20'
+                                                }`}
                                         >
-                                            Start Test
+                                            {inProgressTests.has(test.id) ? 'Resume Test' : 'Start Test'}
                                         </Link>
                                     )}
                                 </div>
