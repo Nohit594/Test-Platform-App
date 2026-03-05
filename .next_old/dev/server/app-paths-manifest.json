@@ -1,0 +1,10 @@
+{
+  "/admin/page": "app/admin/page.js",
+  "/api/admin/assignments/route": "app/api/admin/assignments/route.js",
+  "/api/admin/users/route": "app/api/admin/users/route.js",
+  "/api/student/dashboard/route": "app/api/student/dashboard/route.js",
+  "/api/tests/[id]/route": "app/api/tests/[id]/route.js",
+  "/api/tests/route": "app/api/tests/route.js",
+  "/student/page": "app/student/page.js",
+  "/student/test/[id]/page": "app/student/test/[id]/page.js"
+}
