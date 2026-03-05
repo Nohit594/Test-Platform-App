@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/db';
 import Attempt from '@/models/Attempt';
 
+export const dynamic = 'force-dynamic';
+
 interface QuestionData {
     number: number;
     text: string;
