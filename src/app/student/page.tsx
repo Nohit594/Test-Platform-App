@@ -338,9 +338,9 @@ export default function StudentDashboard() {
                                                     <div className="flex flex-col sm:flex-row gap-2 justify-start md:justify-end w-full">
                                                         <Link
                                                             href={`/student/results/${test.id}`}
-                                                            className="flex items-center justify-center gap-1.5 px-4 py-2 sm:px-0 sm:py-0 bg-slate-800 sm:bg-transparent rounded-lg sm:rounded-none text-sm text-slate-300 sm:text-slate-400 hover:text-white sm:underline decoration-slate-600 underline-offset-4 transition-colors"
+                                                            className="flex items-center justify-center gap-1.5 px-4 py-2 sm:px-3 sm:py-1.5 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/50 hover:border-slate-600/70 text-slate-300 hover:text-white text-sm font-medium rounded-lg transition-all w-full sm:w-auto"
                                                         >
-                                                            <BarChart2 size={16} className="sm:w-3.5 sm:h-3.5" />
+                                                            <BarChart2 size={16} className="sm:w-[13px] sm:h-[13px]" />
                                                             View Analysis
                                                         </Link>
                                                         <button
